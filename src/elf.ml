@@ -11,7 +11,7 @@ let re_classify_caml =
   let id = mk_id  "[a-zA-Z0-9_$]+" in
   let final_id =
     mid
-    <|> (id <&> opt (str"_" *> pos_int))
+    <||> (id <&> opt (str"_" *> pos_int))
   in
   let caml_lid =
     str "caml" *> terminated_list ~sep:(str"__") mid <&> final_id
@@ -23,8 +23,8 @@ let re_classify_caml =
   route [
     runtime_id --> (fun s -> ([s], None, Info.Primitive));
     caml_lid --> (fun (l,s) -> match s with
-        | `Left s -> l@[s], None, Info.Module
-        | `Right (s, id) -> l@[s], id, Info.Value
+        | Either.Left s -> l@[s], None, Info.Module
+        | Either.Right (s, id) -> l@[s], id, Info.Value
       );
     (* unknown_caml_id --> (fun s -> ([s], Info.Unknown)); *)
   ]

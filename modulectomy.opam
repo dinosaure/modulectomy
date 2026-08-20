@@ -18,7 +18,7 @@ depends: [
   "containers-data"
   "fpath"
   "tyxml"
-  "tyre"
+  "tyre" {>= "1.0"}
   "cmdliner" {>= "1.1.0"}
   "fmt"
 ]
