@@ -46,7 +46,7 @@ module Robur_defaults = struct
   let filter_small = 0.004
 
   let with_scale () = failwith "You need to pass --with-scale=<ELF-SIZE>"
-  
+
 end
 
 let squarify robur_defaults robur_css filter_small with_scale infos =
@@ -54,11 +54,11 @@ let squarify robur_defaults robur_css filter_small with_scale infos =
     if robur_defaults || robur_css then
       Some Robur_defaults.css_overrides
     else None
-  and default_filter_small = 
+  and default_filter_small =
     if robur_defaults then
       Some Robur_defaults.filter_small
     else None
-  and default_with_scale () = 
+  and default_with_scale () =
     if robur_defaults then
       Some (Robur_defaults.with_scale ())
       (*< todo can this param dependency be represented in Cmdliner DSL?*)
@@ -67,7 +67,7 @@ let squarify robur_defaults robur_css filter_small with_scale infos =
   let filter_small = filter_small |> CCOption.or_ ~else_:default_filter_small
   and with_scale = with_scale |> CCOption.or_lazy ~else_:default_with_scale
   in
-  let size, infos = 
+  let size, infos =
     infos
     |> Info.import
     |> (fun info ->
@@ -79,10 +79,10 @@ let squarify robur_defaults robur_css filter_small with_scale infos =
   (*> Note: this heuristic fails if one has many subtrees of equal size*)
   let node_big_enough subtree =
     match filter_small, Info.(subtree.T.value.size) with
-    | _, None | None, _ -> true 
+    | _, None | None, _ -> true
     | Some min_pct, Some subtree_size ->
       let pct = Int64.(to_float subtree_size /. to_float size) in
-      pct > min_pct 
+      pct > min_pct
   in
   let infos, excluded_minors =
     infos
@@ -118,7 +118,7 @@ let guess file =
 
 module Arg_aux = struct
 
-  open Cmdliner 
+  open Cmdliner
 
   let programs_arg =
     let flatten x = Term.(const List.flatten $ x) in
@@ -159,11 +159,11 @@ module Arg_aux = struct
     let docv = "BYTES" in
     Arg.(value & opt (some int) None & info [ "with-scale" ] ~doc ~docv)
 
-  let robur_css = 
+  let robur_css =
     let doc = "Use Robur CSS styling in HTML" in
     Arg.(value & flag & info [ "robur-css" ] ~doc)
-  
-  let robur_defaults = 
+
+  let robur_defaults =
     let doc = "Use Robur default values for every configuration option. \
                You need to pass --with-scale too." in
     Arg.(value & flag & info [ "robur-defaults" ] ~doc)

@@ -26,7 +26,9 @@ type data = {
   kind : kind ;
   v : Int64.t option ;
 }
+
 let mk ?v ?size ?location kind = { v ; size ; location ; kind }
+
 let coalesce data1 data2 =
   let open CCOption.Infix in
   let size = Int64.add <$> data1.size <*> data2.size in
@@ -43,10 +45,11 @@ let pp_data ppf d =
     CCFormat.(opt int64) d.v
 
 type name = string
+
 type lid = name list
 
-
 module SMap = CCMap.Make(String)
+
 module T = struct
 
   type t = T of node SMap.t
@@ -63,7 +66,7 @@ module T = struct
       t
 
   let empty = T SMap.empty
-  
+
   let rec insert (T t) l x = match l with
     | [] -> assert false
     | name::rest ->
@@ -79,7 +82,7 @@ module T = struct
     | l ->
       let children = insert node.children l x in
       {node with children}
-  
+
   and singleton l v = match l with
     | [] -> { value = v ; children = empty }
     | name::rest ->
@@ -91,6 +94,7 @@ module T = struct
 
   let rec union (T t1) (T t2) =
     T (SMap.union union_node t1 t2)
+
   and union_node _ v1 v2 =
     Some {
       value = coalesce v1.value v2.value ;
@@ -118,6 +122,7 @@ let rec diff_size_tree ?(n = "") ((T.T t) : t) =
   in
   let total_size, trees = SMap.fold aux t (0L,SMap.empty) in
   total_size, T.T trees
+
 and diff_size_node v T.{ value; children } =
   match value.kind with
   | Module ->
@@ -252,8 +257,6 @@ let prefix_filename ((T.T t) : t) =
   in
   T.T (SMap.fold f t SMap.empty)
 
-
-
 let rec compute_area ?(size=0L) ((T.T t) : t) =
   let aux _ T.{ value; children } x =
     let s = compute_area ?size:value.size children in
@@ -264,6 +267,7 @@ let rec compute_area ?(size=0L) ((T.T t) : t) =
 let rec cut_tree n ((T.T t) : t) =
   let aux tree = cut_node n tree in
   T.T (SMap.map aux t)
+
 and cut_node n T.{ value; children } =
   if n > 0 then
     let children = cut_tree (n-1) children in

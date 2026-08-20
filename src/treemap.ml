@@ -1,10 +1,10 @@
 
 let visualization_version = 1
-(** Remember to increment this when anything changes that can affect the 
+(** Remember to increment this when anything changes that can affect the
     visualization, e.g.:
       * algorithm change
       * UI change
-      * certain library-dependency changes 
+      * certain library-dependency changes
 *)
 
 let sp = Printf.sprintf
@@ -46,10 +46,9 @@ and node_to_tree_layout path (label, {value; children}) =
       let size = Int64.to_float i in
       let v = { path = new_path ; label = "" ; size ; data = value } in
       let internal_node = T.Node (v, [||]) in
-      0., Array.append [|internal_node|] a 
+      0., Array.append [|internal_node|] a
   in
   Tree_layout.Node ({path ; label ; size ; data = value}, children)
-
 
 let ratio = 1.
 
@@ -63,7 +62,7 @@ let sub { Tree_layout.Common. p ; w ; h } =
   let h' = h /.1.1 in
   let dy = h -. h' in
   let p = { p with y = p.y +. dy } in
-  Tree_layout.Common.{ p ; w ; h = h'} 
+  Tree_layout.Common.{ p ; w ; h = h'}
 
 let of_tree l =
   let l = to_tree_layout [] l in
@@ -139,7 +138,7 @@ module Render = struct
   stroke-width: 0;
 }
 |} stroke_width
-  
+
   let scoped_class s = "treemap-"^s
 
   module Treemap = struct
@@ -218,7 +217,7 @@ module Render = struct
     let leaf ~info pos =
       (* let angle = -.180.*.tanh (pos.h/.pos.w)/.Float.pi in
        * let center = pos.p.x+.pos.w/.2. , pos.p.y+.pos.h/.2. in *)
-      let label = 
+      let label =
         Svg.[text ~a:(
           a_class [scoped_class "label"] ::
           a_dominant_baseline `Central ::
@@ -284,7 +283,7 @@ module Render = struct
 
   module Scale = struct
 
-    module Rose_tree = struct 
+    module Rose_tree = struct
 
       type 'a t = Node of 'a * 'a t list
 
@@ -296,13 +295,13 @@ module Render = struct
 
     let style_of_color (r, g, b) =
       let color_str = sp "rgb(%d,%d,%d)" r g b in
-      sp "stroke: %s; fill: %s; filter: grayscale(100%%);" color_str color_str 
-    
+      sp "stroke: %s; fill: %s; filter: grayscale(100%%);" color_str color_str
+
     let rect ~color ~w ~h ~x ~y =
       let style_str = style_of_color color in
       Svg.(
         rect ~a:[
-          a_class [scoped_class "scale-fill"]; 
+          a_class [scoped_class "scale-fill"];
           a_style style_str;
           a_x @@ pct x;
           a_y @@ pct y;
@@ -336,7 +335,7 @@ module Render = struct
       let padding_vert = 7.0 in
       let scale_line =
         let lr_stump_y = 100. in
-        let line_y = 75. +. padding_vert /. 2. in 
+        let line_y = 75. +. padding_vert /. 2. in
         let line_x0 = 0. in
         let l_stump_x = line_x0 +. line_width /. 2. in
         let line_x1 = 100. in
@@ -346,7 +345,7 @@ module Render = struct
         let stumps = Svg.g [
           line ~x0:m_stump_x ~y0:m_stump_y ~x1:m_stump_x ~y1:line_y;
           line ~x0:l_stump_x ~y0:lr_stump_y ~x1:l_stump_x ~y1:line_y;
-          line ~x0:r_stump_x ~y0:lr_stump_y ~x1:r_stump_x ~y1:line_y; 
+          line ~x0:r_stump_x ~y0:lr_stump_y ~x1:r_stump_x ~y1:line_y;
         ]
         in
         let a = [ Svg.a_style (style_of_color color) ] in
@@ -379,8 +378,8 @@ module Render = struct
                 rect ~color ~w:pct ~h:50. ~x:acc_pct ~y:0.;
                 Svg.g children_svgs
               ]
-            (*< TODO return aspect ratio (or something else) 
-              to be able to make correctly sized container 
+            (*< TODO return aspect ratio (or something else)
+              to be able to make correctly sized container
               (though treemap might always be square) *)
             (* make_label @@ sp "%.0f%%" pct; *)
           in
@@ -398,7 +397,7 @@ module Render = struct
       let treemap_pct = 100. *. treemap_size /. binary_size in
       let size_string tag size =
         (*TODO: use integers for sizes throughout*)
-        let size = truncate size in 
+        let size = truncate size in
         Format.asprintf "%s: %a" tag Fmt.byte_size size
       in
       let input_subtrees =
@@ -424,7 +423,7 @@ module Render = struct
   end
 
   let merge_css = String.concat "\n"
-  
+
   let html_with_scale
       ~binary_size
       ~scale_chunks
@@ -457,23 +456,23 @@ module Render = struct
 end
 
 let to_html = Render.html
-(** [Treemap.to_html ?override_css tree] renders the interactive Treemap-SVG 
+(** [Treemap.to_html ?override_css tree] renders the interactive Treemap-SVG
     as HTML including the needed CSS*)
 
 let to_html_with_scale = Render.html_with_scale
-(** [Treemap.to_html_with_scale ?override_css ~binary_size ~scale_chunks tree] 
-    Renders both the interactive Treemap-SVG and Scale-SVG as HTML, 
-    including their needed CSS. 
-    The Scale-SVG shows the size of data rendered by the Treemap, relative to 
-    the binary size and other 'scale_chunks' of data. 
+(** [Treemap.to_html_with_scale ?override_css ~binary_size ~scale_chunks tree]
+    Renders both the interactive Treemap-SVG and Scale-SVG as HTML,
+    including their needed CSS.
+    The Scale-SVG shows the size of data rendered by the Treemap, relative to
+    the binary size and other 'scale_chunks' of data.
 
     The [scale_chunks] is a list of names and sizes of chunks of the binary,
     which are not included in the treemap. Can e.g. be used to show excluded
     modules.
 
-    The full [binary_size] in bytes needs to be supplied. 
+    The full [binary_size] in bytes needs to be supplied.
 
-    [override_css] lets you supply a CSS string that is appended, which 
+    [override_css] lets you supply a CSS string that is appended, which
     therefore lets you add new, or override existing CSS selectors.
 *)
 
