@@ -2,31 +2,33 @@ open Owee_elf
 module Symbol = Symbol_table.Symbol
 open CCOption.Infix
 
-let re_classify_caml =
-  let open Tyre in
-  let mk_id s =
-    shortest @@ regex @@ Re.Posix.re s
-  in
-  let mid = mk_id "[A-Z][a-zA-Z0-9_$]*" in
-  let id = mk_id  "[a-zA-Z0-9_$]+" in
-  let final_id =
-    mid
-    <||> (id <&> opt (str"_" *> pos_int))
-  in
-  let caml_lid =
-    str "caml" *> terminated_list ~sep:(str"__") mid <&> final_id
-  in
-  let runtime_id = str "caml_" *> id in
-  (* let unknown_caml_id = str "caml" *> pcre ".*" in *)
-  let (-->) re f = whole_string re --> f in
-  route [
-    runtime_id --> (fun s -> ([s], None, Info.Primitive));
-    caml_lid --> (fun (l,s) -> match s with
-        | Either.Left s -> l@[s], None, Info.Module
-        | Either.Right (s, id) -> l@[s], id, Info.Value
-      );
-    (* unknown_caml_id --> (fun s -> ([s], Info.Unknown)); *)
-  ]
+let classify_caml_4 =
+  let ty =
+    let open Tyre in
+      let mk_id s =
+      shortest @@ regex @@ Re.Posix.re s
+    in
+    let mid = mk_id "[A-Z][a-zA-Z0-9_$]*" in
+    let id = mk_id  "[a-zA-Z0-9_$]+" in
+    let final_id =
+      mid
+      <||> (id <&> opt (str"_" *> pos_int))
+    in
+    let caml_lid =
+      str "caml" *> terminated_list ~sep:(str"__") mid <&> final_id
+    in
+    let runtime_id = str "caml_" *> id in
+    (* let unknown_caml_id = str "caml" *> pcre ".*" in *)
+    let (-->) re f = whole_string re --> f in
+    route [
+      runtime_id --> (fun s -> ([s], None, Info.Primitive));
+      caml_lid --> (fun (l,s) -> match s with
+          | Either.Left s -> l@[s], None, Info.Module
+          | Either.Right (s, id) -> l@[s], id, Info.Value
+        );
+      (* unknown_caml_id --> (fun s -> ([s], Info.Unknown)); *)
+    ] in
+  fun name -> Tyre.exec ty name
 
 (* NOTE(dinosaure):
    - [Foo__Bar] is [Foo.Bar]
@@ -47,7 +49,7 @@ let annot_kind k ty = match k, ty with
 
 let classify_symb ~tbl symb =
   Symbol.name symb tbl >>= fun name ->
-  let id = CCResult.to_opt @@ Tyre.exec re_classify_caml name in
+  let id = CCResult.to_opt @@ classify_caml_4 name in
   match id with
   | Some (s, id, k) ->
     Some ("OCaml"::s, id, annot_kind k @@ Symbol.type_attribute symb)
