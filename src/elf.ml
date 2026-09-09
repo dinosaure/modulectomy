@@ -169,8 +169,12 @@ let mk_info_tbl buffer sections =
   let symbols = ref SymSet.empty in
   let visited s = SymSet.mem (SymRepr.of_symbol ~tbl s) !symbols
   in
+  let occupies_file_space symbol =
+    let idx = Symbol.section_header_table_index symbol in
+    idx < 0 || idx >= Array.length sections
+    || sections.(idx).Owee_elf.sh_type <> 8 (* .bss, .tbss *) in
   let f symbol =
-    if not (visited symbol) then
+    if not (visited symbol) && occupies_file_space symbol then
       begin
         symbols := SymSet.add (SymRepr.of_symbol ~tbl symbol) !symbols;
         match Symbol.type_attribute symbol with
