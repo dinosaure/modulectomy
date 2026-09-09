@@ -42,6 +42,24 @@ let normalize str =
     | x :: rem -> go acc (x :: cur) rem in
   go [] [] (String.split_on_char '_' str)
 
+(* NOTE(dinosaure): the format is ["caml<MODULE>.value_<ID>"] *)
+let classify_caml_5 name =
+  let len = String.length name in
+  if len <= 4 || not String.(equal (sub name 0 4) "caml") then None
+  else match String.index_opt name '.' with
+    | None -> None
+    | Some dot ->
+      let modpath = normalize (String.sub name 4 (dot - 4)) in
+      let value = String.sub name (dot + 1) (len - dot - 1) in
+      let ident, id = match String.rindex_opt value '_' with
+        | None -> value, None
+        | Some idx ->
+          let stamp = String.sub value (idx+1) (String.length value - idx - 1) in
+          match int_of_string_opt stamp with
+          | Some id -> String.sub value 0 idx, Some id
+          | None -> value, None in
+      Some (modpath @ [ ident ], id, Info.Value)
+
 let annot_kind k ty = match k, ty with
   | Info.Value, Symbol.Func -> Info.Function
   | Module, Symbol.Func -> Functor
@@ -49,7 +67,9 @@ let annot_kind k ty = match k, ty with
 
 let classify_symb ~tbl symb =
   Symbol.name symb tbl >>= fun name ->
-  let id = CCResult.to_opt @@ classify_caml_4 name in
+  let id = match classify_caml_5 name with
+    | None -> CCResult.to_opt @@ classify_caml_4 name
+    | Some _ as id -> id in
   match id with
   | Some (s, id, k) ->
     Some ("OCaml"::s, id, annot_kind k @@ Symbol.type_attribute symb)
@@ -114,36 +134,38 @@ let mk_info_tbl buffer sections =
   let modules = Hashtbl.create 7 in
   let other_syms = Hashtbl.create 7 in
   let marker =
-    let code_begin = "__code_begin" and code_end = "__code_end"
-    and data_begin = "__data_begin" and data_end = "__data_end"
-    in
-    let lb = String.length code_begin and le = String.length code_end in
+    (* try to recognize caml<MODULE>__code_begin or caml<MODULE>.code_begin *)
+    let suffixes =
+      [ "code_begin", (fun m -> `Code_begin m)
+      ; "code_end", (fun m -> `Code_end m)
+      ; "data_begin", (fun m -> `Data_begin m)
+      ; "data_end", (fun m -> `Data_end m) ] in
     fun name ->
       match name with
       | None -> Error ()
       | Some name ->
         let l = String.length name in
-        if l >= le + 4 && String.(equal (sub name 0 4) "caml") then
-          let modname suffix_len =
-            (* camlMain__code_begin and caml_startup_code_begin *)
-            let start = if String.get name 4 = '_' then 5 else 4 in
-            if l > suffix_len + start then
-              String.sub name start (l - suffix_len - start)
-            else
-              name
-          in
-          match
-            l >= 4 + lb && String.(equal (sub name (l - lb) lb) code_begin),
-            String.(equal (sub name (l - le) le) code_end),
-            l >= 4 + lb && String.(equal (sub name (l - lb) lb) data_begin),
-            String.(equal (sub name (l - le) le) data_end)
-          with
-          | true, false, false, false -> Ok (`Code_begin (modname lb))
-          | false, true, false, false -> Ok (`Code_end (modname le))
-          | false, false, true, false -> Ok (`Data_begin (modname lb))
-          | false, false, false, true -> Ok (`Data_end (modname le))
-          | false, false, false, false -> Error ()
-          | _ -> assert false
+        if l >= 4 && String.(equal (sub name 0 4)) "caml" then
+          let sep_length suffix_len =
+            let at = l - suffix_len in
+            (* OCaml 4 *)
+            if at >= 2 && String.(equal (sub name (at - 2) 2) "__") then 2
+            (* OCaml 5 *)
+            else if at >= 1 && String.get name (at - 1) = '.' then 1
+            else 0 in
+          let rec find = function
+            | [] -> Error ()
+            | (suffix, mk) :: rem ->
+              let suffix_len = String.length suffix in
+              let sep = if l >= suffix_len then sep_length suffix_len else 0 in
+              if sep > 0 && String.(equal (sub name (l - suffix_len) suffix_len) suffix)
+              then
+                let start = if String.get name 4 = '_' then 5 else 4 in
+                let len = l - suffix_len - sep - start in
+                let modname = if len > 0 then String.sub name start len else name in
+                Ok (mk modname)
+              else find rem in
+          find suffixes
         else
           Error ()
   in
