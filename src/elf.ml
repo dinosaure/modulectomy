@@ -28,6 +28,18 @@ let re_classify_caml =
     (* unknown_caml_id --> (fun s -> ([s], Info.Unknown)); *)
   ]
 
+(* NOTE(dinosaure):
+   - [Foo__Bar] is [Foo.Bar]
+   - [Foo_Bar] is [Foo_Bar]
+
+   We normalize the module path here. *)
+let normalize str =
+  let rec go acc cur = function
+    | [] -> List.rev (String.concat "_" (List.rev cur) :: acc)
+    | (* _ *) "" (* _ *) :: rem -> go (String.concat "_" (List.rev cur) :: acc) [] rem
+    | x :: rem -> go acc (x :: cur) rem in
+  go [] [] (String.split_on_char '_' str)
+
 let annot_kind k ty = match k, ty with
   | Info.Value, Symbol.Func -> Info.Function
   | Module, Symbol.Func -> Functor
@@ -215,13 +227,7 @@ let mk_info_tbl buffer sections =
   AddrTbl.filter_map_inplace
     (fun addr v -> if in_range addr then None else Some v) h;
   let to_mod ?post s =
-    let eles = String.split_on_char '_' s in
-    let rec go acc cur = function
-      | [] -> List.rev (String.concat "_" (List.rev cur) :: acc)
-      | "" :: rt -> go (String.concat "_" (List.rev cur) :: acc) [] rt
-      | x :: xs -> go acc (x :: cur) xs
-    in
-    let m = go [] [] eles in
+    let m = normalize s in
     "OCaml" :: m @ (match post with None -> [] | Some x -> [ x ])
   in
   Hashtbl.iter (fun k (size, vs) ->
