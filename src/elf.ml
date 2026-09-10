@@ -5,7 +5,7 @@ open CCOption.Infix
 let classify_caml_4 =
   let ty =
     let open Tyre in
-      let mk_id s =
+    let mk_id s =
       shortest @@ regex @@ Re.Posix.re s
     in
     let mid = mk_id "[A-Z][a-zA-Z0-9_$]*" in
